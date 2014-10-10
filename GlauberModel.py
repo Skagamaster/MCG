@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from datetime import date
 from urllib2 import urlopen
 from scipy.optimize import curve_fit
-from scipy.special import j0
 import time
 
 #Importing data from particle data group
@@ -60,6 +59,8 @@ if DataFound2==True:
     ESyEr_H=Edata[:,7]
     ESyEr_L=Edata[:,8]
 
+pyt.figsize(12,7)
+
 def Ecm(Plab):
     """Converts Plab momenta to center of mass energy [GeV]."""
     E=(((Plab**2+.938**2)**(1/2.)+.938)**2-(Plab**2))**(1/2.)
@@ -100,14 +101,13 @@ def SigI(BE):
 
 def DisplayData():
     """Displays the Proton-Proton Cross Section Data."""
-    pyt.figsize(12,7)
     plt.loglog(E_cm,Sig,ls=' ',marker='.',markersize=3,color='black',label='PDG Data')
     plt.loglog(eE_cm,ESig,ls=' ',marker='.',markersize=3,color='black')
     plt.loglog(E_cm[90:],func(E_cm[90:],popt2[0],popt2[1],popt2[2],popt2[3],popt2[4],popt2[5],popt2[6]),color='blue')
     plt.loglog(E_cm,func(E_cm,popt[0],popt[1],popt[2],popt[3],popt[4],popt[5],popt[6]),color='blue',label='Fit')
     plt.scatter(7000,70.5,label='TOTEM EPL 101 21003',color='red')
-    plt.scatter([2760,7000],[62.1,72.7],label='ALICE 2011',color='blue')
-    plt.scatter([7000,8000],[72.9,74.7],label='TOTEM 2013',color='green')
+    plt.scatter([2760,7000],[62.1,72.7],label='ALICE 2013 EPJ C73',color='blue')
+    plt.scatter([7000,8000],[72.9,74.7],label='TOTEM 2013 PRL 111 012001 ',color='green')
     plt.errorbar([2760,7000,7000,7000,8000],[62.1,70.5,72.7,72.9,74.7],yerr=[5.9,3.4,6.2,1.5,1.7],fmt=' ',color='black')
     plt.loglog(E_cm[90:],10*SigI(E_cm[90:]))
     plt.errorbar(E_cm,Sig,xerr=[E_cm-cm_min,cm_max-E_cm],yerr=[StEr_L,StEr_H],ms=.5,mew=0,fmt=None,ecolor='black')
@@ -166,7 +166,7 @@ def NCD(Nucleus,Model,Range=2,Bins=100):
         print "Warning: Model not yet supported\nPlease use a different model."
         return None
     elif Model=='FB':
-        #print "Warning: Fourier-Bessel Model currently contains support for He-3 only. If not simulating He-3 collisions, please choose another model."
+        #print "Warning: Fourier-Bessel Model currently contains support for H-3, He-3, C-12, and O-16 only. If not these ions, please choose another model."
         for FBindex in range(len(FBnucleus)):
             if FBnucleus[FBindex]==Nucleus:
                 iFB=FBindex
@@ -174,7 +174,7 @@ def NCD(Nucleus,Model,Range=2,Bins=100):
         p=np.zeros(np.size(r),float)
         v=np.arange(0,17,1)
         for i in range(len(r)):
-            p[i]=abs(sum(FBa[iFB-1,v]*j0((v+1)*np.pi*r[i]/float(FBR[iFB]))))
+            p[i]=abs(sum(FBa[iFB-1,v]*np.sinc((v+1)*r[i]/float(FBR[iFB]))))
         return p
     elif Model=='SOG':
         print "Warning: Model not yet supported\nPlease use a different model."
@@ -335,34 +335,46 @@ def Collider(N,Particle1,A1,Particle2,A2,model1,model2,Energy,bRange=1.1,Range=2
                     Nucleus2[p2,6]=1
         #Number of participating particles is the total number of particles minus all the flagged unwounded particles
         Npart[L]=A1+A2-(sum(Nucleus1[:,6])+sum(Nucleus2[:,6]))
+        if model1 == 'FB':
+            Rp1=float(pr2[i1])
+        if model2 == 'FB':
+            Rp2=float(pr2[i2])
     return b,Nucleus1,Nucleus2,Npart,Ncoll,Maxr,Rp1,Rp2
 
 def PlotNuclei(Nucleus1,Nucleus2,Particle1,Particle2,model1,model2,Rp1,Rp2,Range,Bins):
     """
-    Plots the nuclear charge density for each nucleus and the 
-    cummulative distribution of the nucleons in each nucleus.
+    Plots the nuclear charge density for each nucleus and 
+    shows the root-mean-square radius.
     Blue corresponds to nucleus 1 and green to nucleus 2.
     """
+    r1=np.linspace(0,Range*Rp1,Bins)
+    r2=np.linspace(0,Range*Rp2,Bins)
     if model1 != 'FB':
         Range1=Range
     else:
+        for FBindex in range(len(FBnucleus)):
+            if FBnucleus[FBindex]==Particle1:
+                iFB=FBindex
+        RpFB1=float(FBR[iFB])
         Range1=1
+        r1=np.linspace(0,RpFB1,Bins)
     if model2 != 'FB':
         Range2=Range
     else:
+        for FBindex in range(len(FBnucleus)):
+            if FBnucleus[FBindex]==Particle2:
+                iFB=FBindex
+        RpFB2=float(FBR[iFB])
         Range2=1
-    r1=np.linspace(0,Range1*Rp1,Bins)
-    r2=np.linspace(0,Range2*Rp2,Bins)
-    #n1,bins,patches=plt.hist(Nucleus1[:,0],40,normed=True,alpha=.75,label=str(Particle1)+ " nucleons")
-    #n2,bins,patches=plt.hist(Nucleus2[:,0],40,normed=True,alpha=.75,label=str(Particle2)+" nucleons")
-    plt.plot(r1,NCD(Particle1,model1,Range,Bins)/max(NCD(Particle1,model1,Range,Bins)),lw=2.5,label=str(Particle1)+" Radial Density")
-    plt.plot(r2,NCD(Particle2,model2,Range,Bins)/max(NCD(Particle2,model2,Range,Bins)),lw=2.5,label=str(Particle2)+" Radial Density")
-    #if max(n1)>max(n2):
-        #plt.plot(r1,NCD(Particle1,model1,Range,Bins)*max(n1),lw=2.5,label=str(Particle1)+" Radial Density")
-        #plt.plot(r2,NCD(Particle2,model2,Range,Bins)*max(n1),lw=2.5,label=str(Particle2)+" Radial Density")
-    #else:
-        #plt.plot(r1,NCD(Particle1,model1,Range,Bins)*max(n2),lw=2.5,label=str(Particle1)+" Radial Density")
-        #plt.plot(r2,NCD(Particle2,model2,Range,Bins)*max(n2),lw=2.5,label=str(Particle2)+" Radial Density")
+        r2=np.linspace(0,RpFB2,Bins)
+    d1=NCD(Particle1,model1,Range,Bins)/max(NCD(Particle1,model1,Range,Bins))
+    d2=NCD(Particle2,model2,Range,Bins)/max(NCD(Particle2,model2,Range,Bins))
+    rms1=r1[np.abs(r1-Rp1).argmin()]
+    rms2=r2[np.abs(r2-Rp2).argmin()]
+    plt.plot(r1,d1,color='blue',lw=2.5,label=str(Particle1)+" Radial Density")
+    plt.plot(r2,d2,color='green',lw=2.5,label=str(Particle2)+" Radial Density")
+    plt.plot([rms1,rms1],[0,d1[np.abs(r1-Rp1).argmin()]],'b--',lw=2,label=str(Particle1)+' rms radius')
+    plt.plot([rms2,rms2],[0,d2[np.abs(r2-Rp2).argmin()]],'g--',lw=2,label=str(Particle2)+' rms radius')
     plt.xlabel("Radial Distance [fm]",fontsize=14)
     plt.ylabel("Density",fontsize=14)
     plt.legend()
@@ -385,7 +397,7 @@ def ShowCollision(N,Particle1,A1,Particle2,A2,Rp1,Rp2,Nucleus1,Nucleus2,b,Npart,
             ax.plot(b[N-1]+Rp1+Nucleus2[i,4],Rp1+Nucleus2[i,3],'g.',ms=26,alpha=.6,mew=0,mec='green')
         if Nucleus2[i,6]==0:
             ax.plot(b[N-1]+Rp1+Nucleus2[i,4],Rp1+Nucleus2[i,3],'y.',ms=26,alpha=.6,mew=0,mec='yellow')
-    zed=1.2*(Rp1+Rp2)+b[N-1]
+    zed=1.5*(Rp1+Rp2)+b[N-1]
     ax.annotate('Npart='+str(Npart[N-1])+'\nNcoll='+str(Ncoll[N-1]),xy=(1,0),xytext=(0,1.015*zed),fontsize=16)
     ax.annotate('Maxr: '+str(Maxr)[:5]+' fm',xy=(0,2*Rp1),xytext=(.01*zed,.95*zed),fontsize=12)
     ax.plot([(.01*zed),(.01*zed)+Maxr],[zed*.93,zed*.93],color='r',ls='-',lw=3)
@@ -468,7 +480,7 @@ def PlotResults(b,Npart,Ncoll,Particle1,Particle2,N,Energy,bins=10):
     plt.xlim(0,max(x))
     plt.ylim(0,1.1*max(y))
     plt.legend()
-    plt.ylabel('Npart / Ncoll')
-    plt.xlabel('Impact parameter [fm]')
-    plt.title(str(Particle1)+' + '+str(Particle2)+'. '+str(N)+' iterations. '+str(Energy)+' center-of-mass energy [GeV].')
+    plt.ylabel('Npart / Ncoll', fontsize=18)
+    plt.xlabel('Impact parameter [fm]', fontsize=18)
+    plt.title(str(Particle1)+' + '+str(Particle2)+'. '+str(N)+' iterations. '+str(Energy)+' center-of-mass energy [GeV].', fontsize=18)
     plt.show()
