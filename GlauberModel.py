@@ -352,7 +352,7 @@ def Collider(N, Particle1, A1, Particle2, A2, model1, model2, Energy, bRange=1.6
     counter = 0
     for L in range(N):
         if L % 50 == 49:
-            print("Shooting ion", L+1, "of", N)
+            print("Ion collision", L+1, "of", N, "in progress.")
         Nucleus1 = np.zeros((A1, 7), float)
         Nucleus2 = np.zeros((A2, 7), float)
         # Gives each nucleon is own radial distance from the center of the nucleus
@@ -562,17 +562,32 @@ def PlotResults(b, Npart, Ncoll, Particle1, Particle2, N, Energy, bins=10):
     # TODO make this all a bit cleaner. I'm currently trying to make a set of averages for the
     # TODO Ncoll and Npart bits. This should make graphing a lot cleaner.
     # As of right now, this doesn't work. Can't figure out why.
+    r = len(b)
     b_sort = np.argsort(b)
-    new_Ncoll_div = int(len(Ncoll) / bins) + int(len(Ncoll) % bins != 0)
-    new_Npart_div = int(len(Npart) / bins) + int(len(Npart) % bins != 0)
-    new_Ncoll = np.zeros(new_Ncoll_div * bins)
-    new_Npart = np.zeros(new_Npart_div * bins)
+    means_div = int(r / bins) + int(r % bins != 0)
+    new_Ncoll = np.zeros(means_div * bins)
+    new_Npart = np.zeros(means_div * bins)
     new_Ncoll[:Ncoll.size] = Ncoll[b_sort]
     new_Npart[:Npart.size] = Npart[b_sort]
-    new_Ncoll = np.average(new_Ncoll.reshape(bins, new_Ncoll_div), axis=1)
-    new_Npart = np.average(new_Npart.reshape(bins, new_Npart_div), axis=1)
-    new_Ncoll_err = np.divide(new_Ncoll, np.sqrt(new_Ncoll_div))
-    new_Npart_err = np.divide(new_Npart, np.sqrt(new_Npart_div))
+    new_Ncoll = new_Ncoll.reshape(bins, means_div)
+    new_Ncoll[new_Ncoll == 0.0] = np.nan
+    new_Npart = new_Npart.reshape(bins, means_div)
+    new_Npart[new_Npart == 0.0] = np.nan
+    new_Ncoll_means = np.nanmean(new_Ncoll, axis=1)
+    new_Npart_means = np.nanmean(new_Npart, axis=1)
+    new_Ncoll_err = np.divide(new_Ncoll_means, np.sqrt(means_div))
+    new_Npart_err = np.divide(new_Npart_means, np.sqrt(means_div))
+
+    # Now to get the b values for these means.
+    b_means = np.zeros(means_div * bins)
+    b_means[:b.size] = b[b_sort]
+    b_means = b_means.reshape(bins, means_div)
+    b_means_Ncoll = np.multiply(b_means, np.isfinite(np.hstack(new_Ncoll)).reshape(bins, means_div))
+    b_means_Npart = np.multiply(b_means, np.isfinite(np.hstack(new_Npart)).reshape(bins, means_div))
+    b_means_Ncoll[b_means_Ncoll == 0.0] = np.nan
+    b_means_Npart[b_means_Npart == 0.0] = np.nan
+    b_means_Ncoll = np.nanmean(b_means_Ncoll, axis=1)
+    b_means_Npart = np.nanmean(b_means_Npart, axis=1)
 
     for i in range(len(b)):
         val = b[i]
@@ -592,10 +607,9 @@ def PlotResults(b, Npart, Ncoll, Particle1, Particle2, N, Energy, bins=10):
     err2 = spr2 / np.sqrt(L2)
     plt.plot(b, Ncoll, "ro", alpha=.9, label='Ncoll')
     plt.plot(b, Npart, "bo", alpha=.5, label='Npart')
-    plt.plot(plotx, h, linewidth=2, color="black", label='Old Avg Ncoll')
-    plt.errorbar(plotx, new_Ncoll, yerr=new_Ncoll_err, ecolor="purple", elinewidth=2,
+    plt.errorbar(b_means_Ncoll, new_Ncoll_means, yerr=new_Ncoll_err, ecolor="purple", elinewidth=2,
                  capsize=2, linewidth=2, color="purple", label='Avg Ncoll')
-    plt.errorbar(plotx2, new_Npart, yerr=new_Npart_err, ecolor="green", elinewidth=2,
+    plt.errorbar(b_means_Npart, new_Npart_means, yerr=new_Npart_err, ecolor="green", elinewidth=2,
                  capsize=2, linewidth=2, color="green", label='Avg Npart')
     plt.xlim(0, max(b) + 0.5 * binwidth2)
     plt.ylim(0, 1.1 * max(Ncoll))
