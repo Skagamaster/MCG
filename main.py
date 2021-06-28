@@ -23,10 +23,22 @@ time_start = time.perf_counter()
 b, Nucleus1, Nucleus2, Npart, Ncoll, Maxr, Rp1, Rp2 = Collider(N, Particle1, A1, Particle2, A2, model1, model2,
                                                                Energy, bRange, Range, Bins)
 
-np.save(r"C:\Users\dansk\Documents\Thesis\Tristan\Ncoll_14.npy", Ncoll)
-np.save(r"C:\Users\dansk\Documents\Thesis\Tristan\Npart_14.npy", Npart)
-np.save(r"C:\Users\dansk\Documents\Thesis\Tristan\b_14.npy", b)
-
+"""
+This next section saves the generated b, N_coll, and N_part arrays as both *.npy files for Python anaylsis and
+as *.txt files for any other analysis (like in ROOT). Files are formatted with a suffix of:
+Species1 _ Species2 _ Collision energy _ Number of collisions
+"""
+np.save(r"C:\Users\dansk\Documents\Thesis\Tristan\Ncoll_{}_{}_{}_{}.npy".format(Particle1, Particle2, Energy, N),
+        Ncoll)
+np.save(r"C:\Users\dansk\Documents\Thesis\Tristan\Npart_{}_{}_{}_{}.npy".format(Particle1, Particle2, Energy, N),
+        Npart)
+np.save(r"C:\Users\dansk\Documents\Thesis\Tristan\b_{}_{}_{}_{}.npy".format(Particle1, Particle2, Energy, N), b)
+np.savetxt(r"C:\Users\dansk\Documents\Thesis\Tristan\Ncoll_{}_{}_{}_{}.txt".format(Particle1, Particle2, Energy, N),
+           Ncoll)
+np.savetxt(r"C:\Users\dansk\Documents\Thesis\Tristan\Npart_{}_{}_{}_{}.txt".format(Particle1, Particle2, Energy, N),
+           Npart)
+np.savetxt(r"C:\Users\dansk\Documents\Thesis\Tristan\b_{}_{}_{}_{}.txt".format(Particle1, Particle2, Energy, N), b)
+# Just to keep track of how long things take.
 time_stamp_1 = time.perf_counter()
 print("Collider run time:", time.perf_counter()-time_start)
 
